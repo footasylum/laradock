@@ -26,6 +26,7 @@ ENV DEBIAN_FRONTEND noninteractive
 # Start as root
 USER root
 
+
 ###########################################################################
 # Laradock non-root user:
 ###########################################################################
@@ -65,6 +66,14 @@ RUN apt-get update -yqq && \
 #   - INSTALL_NODE=false
 #   - ...
 #
+
+###########################################################################
+# Update All Packages:
+###########################################################################
+USER root
+
+RUN apt-get update -y && apt-get upgrade -y
+
 
 ###########################################################################
 # Set Timezone
@@ -172,33 +181,6 @@ RUN if [ ${INSTALL_DRUSH} = true ]; then \
     curl -fsSL -o /usr/local/bin/drush https://github.com/drush-ops/drush/releases/download/${DRUSH_VERSION}/drush.phar | bash && \
     chmod +x /usr/local/bin/drush && \
     drush core-status \
-;fi
-
-###########################################################################
-# SSH2:
-###########################################################################
-
-USER root
-
-ARG INSTALL_SSH2=false
-
-RUN if [ ${INSTALL_SSH2} = true ]; then \
-  # Install the PHP SSH2 extension
-  apt-get -y install libssh2-1-dev php${LARADOCK_PHP_VERSION}-ssh2 \
-;fi
-
-###########################################################################
-# GMP:
-###########################################################################
-
-USER root
-
-ARG INSTALL_GMP=false
-ARG PHP_VERSION=${PHP_VERSION}
-
-RUN if [ ${INSTALL_GMP} = true ]; then \
-  # Install the PHP GMP extension
-  apt-get -y install php${PHP_VERSION}-gmp \
 ;fi
 
 ###########################################################################
@@ -393,23 +375,8 @@ RUN if [ ${INSTALL_SWOOLE} = true ]; then \
 ARG INSTALL_LIBPNG=false
 
 RUN if [ ${INSTALL_LIBPNG} = true ]; then \
-    apt-get update && \
-    apt-get install libpng16-16 \
-;fi
-
-###########################################################################
-# IonCube Loader
-###########################################################################
-
-ARG INSTALL_IONCUBE=false
-
-RUN if [ ${INSTALL_IONCUBE} = true ]; then \
-    # Install the php ioncube loader
-    curl -L -o /tmp/ioncube_loaders_lin_x86-64.tar.gz https://downloads.ioncube.com/loader_downloads/ioncube_loaders_lin_x86-64.tar.gz \
-    && tar zxpf /tmp/ioncube_loaders_lin_x86-64.tar.gz -C /tmp \
-    && mv /tmp/ioncube/ioncube_loader_lin_${LARADOCK_PHP_VERSION}.so $(php -r "echo ini_get('extension_dir');")/ioncube_loader.so \
-    && echo "zend_extension=ioncube_loader.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/0ioncube.ini \
-    && rm -rf /tmp/ioncube* \
+    apt update && \
+    apt install libpng16-16 \
 ;fi
 
 ###########################################################################
@@ -446,8 +413,7 @@ ENV NVM_DIR /home/laradock/.nvm
 
 RUN if [ ${INSTALL_NODE} = true ]; then \
     # Install nvm (A Node Version Manager)
-    mkdir -p $NVM_DIR && \
-    curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash \
+    curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.8/install.sh | bash \
         && . $NVM_DIR/nvm.sh \
         && nvm install ${NODE_VERSION} \
         && nvm use ${NODE_VERSION} \
@@ -462,9 +428,10 @@ RUN if [ ${INSTALL_NODE} = true ]; then \
         npm install -g bower \
         ;fi \
         && if [ ${INSTALL_NPM_VUE_CLI} = true ]; then \
-        npm install -g @vue/cli \
+        npm install -g @vue/cli && \
+        npm install -g webpack@^3.12.0 npm-check-updates @adonisjs/cli && \
+        npm install -g jshint vue-svgicon parcel-bundler cross-env nativescript browser-sync \
         ;fi \
-        && ln -s `npm bin --global` /home/laradock/.node-bin \
 ;fi
 
 # Wouldn't execute when added to the RUN statement in the above block
@@ -485,7 +452,7 @@ RUN if [ ${INSTALL_NODE} = true ]; then \
 ;fi
 
 # Add PATH for node
-ENV PATH $PATH:/home/laradock/.node-bin
+ENV PATH $PATH:$NVM_DIR/versions/node/v${NODE_VERSION}/bin
 
 RUN if [ ${NPM_REGISTRY} ]; then \
     . ~/.bashrc && npm config set registry ${NPM_REGISTRY} \
@@ -521,9 +488,6 @@ RUN if [ ${INSTALL_YARN} = true ]; then \
     echo 'export PATH="$YARN_DIR/bin:$PATH"' >> ~/.bashrc \
 ;fi
 
-# Add PATH for YARN
-ENV PATH $PATH:/home/laradock/.yarn/bin
-
 ###########################################################################
 # PHP Aerospike:
 ###########################################################################
@@ -540,22 +504,12 @@ RUN if [ ${INSTALL_AEROSPIKE} = true ]; then \
     curl -L -o /tmp/aerospike-client-php.tar.gz ${AEROSPIKE_PHP_REPOSITORY} \
     && mkdir -p aerospike-client-php \
     && tar -C aerospike-client-php -zxvf /tmp/aerospike-client-php.tar.gz --strip 1 \
-    && \
-      if [ $(php -r "echo PHP_MAJOR_VERSION;") = "5" ]; then \
-        ( \
-            cd aerospike-client-php/src/aerospike \
-            && phpize \
-            && ./build.sh \
-            && make install \
-        ) \
-      else \
-        ( \
-            cd aerospike-client-php/src \
-            && phpize \
-            && ./build.sh \
-            && make install \
-        ) \
-      fi \
+    && ( \
+        cd aerospike-client-php/src \
+        && phpize \
+        && ./build.sh \
+        && make install \
+    ) \
     && rm /tmp/aerospike-client-php.tar.gz \
     && echo 'extension=aerospike.so' >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/aerospike.ini \
     && echo 'aerospike.udf.lua_system_path=/usr/local/aerospike/lua' >> /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/aerospike.ini \
@@ -845,29 +799,87 @@ RUN if [ ${INSTALL_DUSK_DEPS} = true ]; then \
 ;fi
 
 ###########################################################################
-# Phalcon:
+# EXTRA STUFF
 ###########################################################################
 
-ARG INSTALL_PHALCON=false
-ARG LARADOCK_PHALCON_VERSION
-ENV LARADOCK_PHALCON_VERSION ${LARADOCK_PHALCON_VERSION}
+USER root
 
-RUN if [ $INSTALL_PHALCON = true ]; then \
-    apt-get update && apt-get install -y unzip libpcre3-dev gcc make re2c \
-    && curl -L -o /tmp/cphalcon.zip https://github.com/phalcon/cphalcon/archive/v${LARADOCK_PHALCON_VERSION}.zip \
-    && unzip -d /tmp/ /tmp/cphalcon.zip \
-    && cd /tmp/cphalcon-${LARADOCK_PHALCON_VERSION}/build \
-    && ./install \
-    && echo "extension=phalcon.so" >> /etc/php/${LARADOCK_PHP_VERSION}/mods-available/phalcon.ini \
-    && ln -s /etc/php/${LARADOCK_PHP_VERSION}/mods-available/phalcon.ini /etc/php/${LARADOCK_PHP_VERSION}/cli/conf.d/30-phalcon.ini \
-    && rm -rf /tmp/cphalcon* \
-;fi
+ARG PHP_VERSION=${PHP_VERSION}
+
+RUN apt-get update
+RUN apt-get upgrade -y
+# RUN apt-get -y install php${PHP_VERSION}-pdo-dblib
+
+###########################################################################
+# FFMPEG
+###########################################################################
+
+USER root
+
+RUN apt-get update
+RUN apt-get upgrade -y
+RUN apt-get -y install ffmpeg
+
+
+###########################################################################
+# NGROK
+###########################################################################
+
+USER root
+
+RUN curl -s -O https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip \
+    && unzip ngrok-stable-linux-amd64.zip \
+    && mv ngrok /usr/local/bin/ \
+    && rm -f ngrok-stable-linux-amd64.zip
+
+
+###########################################################################
+# JAVA INSTALLATION
+###########################################################################
+
+# USER root
+
+# RUN apt-get update \
+#   && apt-get -y install software-properties-common \
+#   && add-apt-repository ppa:webupd8team/java \
+#   && apt-get update \
+#   && echo oracle-java9-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections \
+#   && apt-get -y install oracle-java9-installer \
+#   && apt-get -y remove software-properties-common \
+#   && apt-get clean autoclean -y \
+#   && apt-get autoremove -y \
+#   && rm -rf /var/lib/apt \
+#     /var/lib/dpkg/arch \
+#     /var/lib/dpkg/available \
+#     /var/lib/dpkg/cmethopt \
+#     /var/lib/dpkg/diversions \
+#     /var/lib/dpkg/diversions-old \
+#     /var/lib/dpkg/lock \
+#     /var/lib/dpkg/parts \
+#     /var/lib/dpkg/statoverride \
+#     /var/lib/dpkg/status-old \
+#     /var/lib/dpkg/triggers \
+#     /var/lib/cache \
+#     /var/lib/log
 
 ###########################################################################
 # Check PHP version:
 ###########################################################################
 
 RUN php -v | head -n 1 | grep -q "PHP ${LARADOCK_PHP_VERSION}."
+
+#
+#--------------------------------------------------------------------------
+# Git Setup Details
+#--------------------------------------------------------------------------
+#
+
+USER root 
+
+RUN git config --global user.email "eokorie2007@gmail.com"
+RUN git config --global user.name "Emmanuel Okorie"
+RUN git config --global push.default simple
+
 
 #
 #--------------------------------------------------------------------------
