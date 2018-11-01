@@ -827,6 +827,10 @@ RUN apt-get -y install ffmpeg
 
 USER root
 
+RUN apt-get update
+RUN apt-get upgrade -y
+RUN apt-get -y unzip
+
 RUN curl -s -O https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip \
     && unzip ngrok-stable-linux-amd64.zip \
     && mv ngrok /usr/local/bin/ \
