@@ -874,19 +874,6 @@ RUN php -v | head -n 1 | grep -q "PHP ${LARADOCK_PHP_VERSION}."
 
 #
 #--------------------------------------------------------------------------
-# Git Setup Details
-#--------------------------------------------------------------------------
-#
-
-USER root 
-
-RUN git config --global user.email "eokorie2007@gmail.com"
-RUN git config --global user.name "Emmanuel Okorie"
-RUN git config --global push.default simple
-
-
-#
-#--------------------------------------------------------------------------
 # Final Touch
 #--------------------------------------------------------------------------
 #
