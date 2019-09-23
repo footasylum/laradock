@@ -1,0 +1,9 @@
+[program:websockets]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/coronacms-laravel-57/artisan websockets:serve --host=0.0.0.0
+numprocs=1
+autostart=true
+autorestart=true
+numprocs=1
+user=laradock
+redirect_stderr=true
