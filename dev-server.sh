@@ -5,15 +5,11 @@ case "$1" in
         if [ "$2" == "apache2" ]
         then
             printf "Starting %s server......" "$2"
-            docker-compose up -d apache2 redis portainer mariadb phpmyadmin workspace php-worker
+            docker-compose up -d apache2 redis portainer beanstalkd beanstalkd-console mariadb phpmyadmin workspace php-worker jenkins laravel-echo-server graylog sonarqube
         elif [ "$2" == "nginx" ] 
         then
             printf "Starting %s server......" "$2"
-            docker-compose up -d nginx redis portainer mariadb phpmyadmin workspace php-worker
-        elif [ "$2" == "monitoring" ]
-        then
-            printf "Starting %s server......" "$2"
-            docker-compose up -d elasticsearch kibana logstash filebeat metricbeat
+            docker-compose up -d nginx redis portainer beanstalkd beanstalkd-console mariadb phpmyadmin workspace php-worker jenkins laravel-echo-server graylog sonarqube
         else
             echo 'Selected server not found.  Choices are apache2 or nginx!'
         fi
@@ -42,10 +38,7 @@ case "$1" in
     rebuild)
         docker-compose stop && \
         docker-compose rm -f && \
-        docker-compose build --no-cache apache2 nginx redis portainer mariadb phpmyadmin workspace php-worker
-        ;;
-    purge)
-        docker system prune
+        docker-compose build --no-cache apache2 nginx redis portainer beanstalkd beanstalkd-console mariadb phpmyadmin workspace php-worker jenkins laravel-echo-server zap graylog sonarqube
         ;;
     *)
         echo don\'t know

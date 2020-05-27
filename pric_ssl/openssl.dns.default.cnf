@@ -1,0 +1,5 @@
+[ alt_names ]
+
+DNS.1 = localhost
+# DNS.2 = test.localhost
+# DNS.3 = *.test.localhost
